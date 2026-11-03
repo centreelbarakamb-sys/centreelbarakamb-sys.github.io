@@ -17,10 +17,21 @@
   .kids a { flex: 0 0 auto; text-decoration: none; border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 999px; padding: 6px 14px; font-weight: 700; font-size: .9rem; }
   .kids a.on { background: var(--brand); color: var(--card); border-color: var(--brand); }
   .kids a.add { color: var(--brand); border-style: dashed; }
-  .idcard { display: flex; gap: 14px; align-items: center; }
-  .idcard .qr { width: 130px; flex: 0 0 130px; background: #fff; border-radius: 12px; padding: 6px; border: 2px solid var(--brand); cursor: zoom-in; }
-  .idcard .qr svg { width: 100%; height: auto; display: block; }
-  .idcard .id { direction: ltr; font-family: monospace; font-weight: 800; font-size: 1.05rem; }
+  .codes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .code { border-radius: 14px; padding: 10px; text-align: center; display: grid; gap: 6px; justify-items: center; min-width: 0; }
+  .code.st { background: var(--brand-2); }
+  .code.pa { background: var(--gold-2); }
+  .code .tag { font-weight: 800; font-size: .8rem; }
+  .code.st .tag { color: var(--brand); }
+  .code.pa .tag { color: var(--gold); }
+  .code .qr { width: 100%; max-width: 150px; background: #fff; border-radius: 10px; padding: 5px; cursor: zoom-in; }
+  .code.st .qr { border: 2px solid #1d3d7a; }
+  .code.pa .qr { border: 2px solid #e0942c; }
+  .code .qr svg { width: 100%; height: auto; display: block; }
+  .code .id { direction: ltr; font-family: monospace; font-weight: 800; font-size: .95rem; }
+  .code p { margin: 0; font-size: .75rem; color: var(--soft); line-height: 1.35; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .row > button { flex: 1 1 140px; }
   .qrbig { position: fixed; inset: 0; background: #fff; z-index: 50; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 24px; color: #111; }
   .qrbig svg { width: min(80vw, 70vh); height: auto; }
   .qrbig b { font-size: 1.4rem; }
@@ -50,15 +61,27 @@
       <div class="refresh soft"><span id="when"></span><button class="ghost small" id="reload">🔄 تحديث</button></div>
     </div>
 
-    <div class="card">
-      <h2>كارت الحضور <span class="fr">Carte de présence</span></h2>
-      <div class="idcard">
-        <div class="qr" id="idQr" role="button" tabindex="0" aria-label="تكبير الكود"></div>
-        <div style="min-width:0">
+    <div class="card" id="codesCard">
+      <h2>الكودين بتوع الطالب <span class="fr">Les deux codes</span></h2>
+      <div class="codes">
+        <div class="code st">
+          <span class="tag">🎒 كود الطالب · Élève</span>
+          <div class="qr" id="idQr" role="button" tabindex="0" aria-label="تكبير كود الطالب"></div>
           <div class="id" id="idText"></div>
-          <p class="soft" style="margin:4px 0 0;font-size:.85rem">الطالب يوري الكود ده في الاستقبال لما يوصل — من الموبايل أو مطبوع. اضغط عليه لتكبيره.</p>
+          <p>الطالب يوريه في الاستقبال لما يوصل</p>
+        </div>
+        <div class="code pa">
+          <span class="tag">👪 كود ولي الأمر · Parent</span>
+          <div class="qr" id="paQr" role="button" tabindex="0" aria-label="تكبير كود ولي الأمر"></div>
+          <div class="id">صفحة الحضور</div>
+          <p>امسحه في أي وقت عشان ترجع للصفحة دي</p>
         </div>
       </div>
+      <div class="row" style="margin-top:12px">
+        <button id="saveCard">💾 حفظ الكودين كصورة</button>
+        <button class="ghost" id="copyLink">🔗 نسخ رابط ولي الأمر</button>
+      </div>
+      <p class="soft" style="margin:8px 0 0;font-size:.8rem">احفظ الصورة على موبايلك أو اطبعها. اضغط على أي كود لتكبيره.</p>
     </div>
 
     <div class="card">
@@ -118,7 +141,10 @@
         : '<div class="bigstatus bad">❌ لم يحضر النهارده<span class="fr">Pas venu aujourd\'hui</span></div>';
       $('when').textContent = B.dayLabel(r.date) + ' · آخر تحديث ' + r.time;
 
-      if ($('idText').textContent !== r.id) { $('idQr').innerHTML = B.qrSvg(r.id); $('idText').textContent = r.id; }
+      if ($('idText').textContent !== r.id) {
+        $('idQr').innerHTML = B.qrSvg(r.id); $('idText').textContent = r.id;
+        $('paQr').innerHTML = B.qrSvg(parentLink());
+      }
 
       $('monthCount').textContent = r.thisMonth;
       $('history').innerHTML = r.visits.length ? r.visits.map(function (v) {
@@ -131,15 +157,81 @@
     }
   }
 
-  function openBig() {
+  // the private link this parent uses to come back (also inside the parent QR)
+  function parentLink() { return location.origin + location.pathname + '?c=' + encodeURIComponent(code); }
+
+  function openBig(which) {
     if (!current) return;
-    $('qrBig').innerHTML = B.qrSvg(current.id) + '<b>' + B.esc(current.student) + '</b><span style="font-family:monospace">' + B.esc(current.id) + '</span><button class="small">إغلاق · Fermer</button>';
+    const isSt = which === 'st';
+    $('qrBig').innerHTML = B.qrSvg(isSt ? current.id : parentLink()) + '<b>' + B.esc(current.student) + '</b>' +
+      '<span>' + (isSt ? '🎒 كود الطالب · ' + B.esc(current.id) : '👪 كود ولي الأمر · صفحة الحضور') + '</span><button class="small">إغلاق · Fermer</button>';
     $('qrBig').classList.remove('hidden');
   }
-  $('idQr').onclick = openBig;
-  $('idQr').onkeydown = function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openBig(); } };
+  [['idQr', 'st'], ['paQr', 'pa']].forEach(function (x) {
+    $(x[0]).onclick = function () { openBig(x[1]); };
+    $(x[0]).onkeydown = function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openBig(x[1]); } };
+  });
   $('qrBig').onclick = function () { $('qrBig').classList.add('hidden'); };
-  if (qs.get('new')) $('newBox').classList.remove('hidden');
+
+  // one image with both codes, to keep on the phone or print
+  function loadImg(src) {
+    return new Promise(function (ok) { const i = new Image(); i.onload = function () { ok(i); }; i.onerror = function () { ok(null); }; i.src = src; });
+  }
+  function qrImg(text) { const q = qrcode(0, 'M'); q.addData(text); q.make(); return loadImg(q.createDataURL(10, 2)); }
+
+  $('saveCard').onclick = async function () {
+    if (!current) return;
+    const btn = $('saveCard'); btn.disabled = true;
+    try {
+      const W = 1200, H = 760, c = document.createElement('canvas');
+      c.width = W; c.height = H;
+      const g = c.getContext('2d');
+      const font = function (w, s) { return w + ' ' + s + 'px Cairo, Tahoma, Arial, sans-serif'; };
+      g.fillStyle = '#ffffff'; g.fillRect(0, 0, W, H);
+      g.fillStyle = '#e0942c'; g.fillRect(0, 0, W, 14);
+      const logo = await loadImg('logo.jpg');
+      if (logo) g.drawImage(logo, W - 150, 34, 110, 110);
+      g.direction = 'rtl'; g.textAlign = 'right'; g.fillStyle = '#1d3d7a';
+      g.font = font(800, 44); g.fillText(current.center || 'سنتر البركة', W - 170, 88);
+      g.fillStyle = '#152033'; g.font = font(700, 34); g.fillText(current.student, W - 170, 134);
+      const halves = [
+        { x: W / 2 + 20, img: await qrImg(current.id), color: '#1d3d7a', bg: '#e7edf8', t1: 'كود الطالب · Élève', t2: current.id, t3: 'يتعرض في الاستقبال لما يوصل' },
+        { x: 40, img: await qrImg(parentLink()), color: '#e0942c', bg: '#fdf1df', t1: 'كود ولي الأمر · Parent', t2: 'صفحة الحضور', t3: 'امسحه عشان تتابع الحضور' }
+      ];
+      halves.forEach(function (h) {
+        const w = W / 2 - 60, y = 180;
+        g.fillStyle = h.bg; g.beginPath(); g.roundRect(h.x, y, w, 540, 28); g.fill();
+        g.textAlign = 'center'; g.fillStyle = h.color; g.font = font(800, 32); g.fillText(h.t1, h.x + w / 2, y + 56);
+        g.fillStyle = '#ffffff'; g.fillRect(h.x + w / 2 - 170, y + 80, 340, 340);
+        g.strokeStyle = h.color; g.lineWidth = 6; g.strokeRect(h.x + w / 2 - 170, y + 80, 340, 340);
+        if (h.img) g.drawImage(h.img, h.x + w / 2 - 160, y + 90, 320, 320);
+        g.fillStyle = '#152033'; g.font = font(800, 30); g.fillText(h.t2, h.x + w / 2, y + 470);
+        g.fillStyle = '#5b6680'; g.font = font(600, 24); g.fillText(h.t3, h.x + w / 2, y + 510);
+      });
+      const a = document.createElement('a');
+      a.download = 'El-Baraka-' + current.id + '.png';
+      a.href = c.toDataURL('image/png');
+      document.body.appendChild(a); a.click(); a.remove();
+      btn.textContent = '✅ اتحفظت الصورة';
+    } catch (e) {
+      btn.textContent = 'حصلت مشكلة — صوّر الشاشة بدلها';
+    } finally {
+      btn.disabled = false;
+    }
+  };
+
+  $('copyLink').onclick = function () {
+    const done = function () { $('copyLink').textContent = '✅ اتنسخ الرابط'; };
+    if (navigator.clipboard) navigator.clipboard.writeText(parentLink()).then(done, function () { prompt('انسخ الرابط:', parentLink()); });
+    else prompt('انسخ الرابط:', parentLink());
+  };
+
+  // right after sign-up: show the two codes first
+  if (qs.get('new')) {
+    $('newBox').classList.remove('hidden');
+    $('newBox').innerHTML = '✅ اتسجل بنجاح! ده كود الطالب وكود ولي الأمر — احفظهم بزرار "حفظ الكودين كصورة".<br><span class="fr">Inscription réussie — enregistrez les deux codes.</span>';
+    const app = $('app'); app.insertBefore($('codesCard'), app.firstChild);
+  }
   $('reload').onclick = load;
   load();
   setInterval(load, 120000);
