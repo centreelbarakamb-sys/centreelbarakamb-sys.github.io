@@ -104,7 +104,7 @@
       else return fail('امسح الكود اللي على كارت الطالب، أو <a href="signup.html">سجّل ابنك من هنا</a><br><span class="fr">Scannez la carte ou inscrivez votre enfant</span>');
     }
     try {
-      const r = await B.api('parent', { c: code });
+      const r = await B.api('parent', { code: code });
       if (!r.ok) { B.kids.remove(code); return fail('الرابط غير صحيح — كلّم السنتر<br><span class="fr">Lien invalide, contactez le centre</span>'); }
       current = r;
       B.kids.add(code, r.student);
