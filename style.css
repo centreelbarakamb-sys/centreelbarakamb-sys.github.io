@@ -1,0 +1,110 @@
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
+
+:root {
+  --bg: #f5f7fb;
+  --card: #ffffff;
+  --ink: #152033;
+  --soft: #5b6680;
+  --line: #dfe5ef;
+  --brand: #1d3d7a;      /* logo navy */
+  --brand-2: #e7edf8;
+  --teal: #2a9bb0;       /* logo teal */
+  --gold: #e0942c;       /* logo orange */
+  --gold-2: #fdf1df;
+  --ok: #138a4c;   --ok-bg: #e2f6ea;
+  --warn: #b26a00; --warn-bg: #fff2da;
+  --bad: #c62828;  --bad-bg: #fde7e7;
+  --muted: #6a7488; --muted-bg: #eef1f6;
+  --radius: 16px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0d1220; --card: #161d2e; --ink: #e8edf7; --soft: #9aa6bf; --line: #283149;
+    --brand: #8fb0ff; --brand-2: #1c2847; --teal: #5cc6da; --gold: #f2ad4e; --gold-2: #33260f;
+    --ok: #4ad68a; --ok-bg: #143223; --warn: #ffb84d; --warn-bg: #33270f;
+    --bad: #ff7070; --bad-bg: #3a1717; --muted: #9aa6bf; --muted-bg: #20283b;
+  }
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  font-family: 'Cairo', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  line-height: 1.5;
+  -webkit-tap-highlight-color: transparent;
+}
+.wrap { max-width: 560px; margin: 0 auto; padding: 16px; }
+header.top {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  margin-bottom: 14px;
+}
+.brand { font-weight: 800; font-size: 1.15rem; color: var(--brand); }
+.brand small { display: block; font-weight: 600; font-size: .78rem; color: var(--soft); }
+.fr { direction: ltr; unicode-bidi: isolate; color: var(--soft); font-size: .85em; }
+
+.card {
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 16px; margin-bottom: 14px;
+}
+h1, h2, h3 { margin: 0 0 8px; line-height: 1.3; }
+h2 { font-size: 1.1rem; }
+
+input, select, button {
+  font: inherit; color: inherit; border-radius: 12px; border: 1px solid var(--line);
+  background: var(--card); padding: 12px 14px; width: 100%;
+}
+input:focus, select:focus { outline: 2px solid var(--brand); outline-offset: 1px; }
+button {
+  background: var(--brand); color: var(--card); border: 0; font-weight: 700; cursor: pointer;
+}
+button.ghost { background: var(--brand-2); color: var(--brand); }
+button.small { width: auto; padding: 8px 14px; font-size: .9rem; }
+.row { display: flex; gap: 10px; }
+.row > * { flex: 1; }
+label.lbl { display: block; font-weight: 600; margin: 10px 0 6px; }
+
+.pill {
+  display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 999px;
+  font-weight: 700; font-size: .9rem; white-space: nowrap;
+}
+.pill.ok { background: var(--ok-bg); color: var(--ok); }
+.pill.warn { background: var(--warn-bg); color: var(--warn); }
+.pill.bad { background: var(--bad-bg); color: var(--bad); }
+.pill.muted { background: var(--muted-bg); color: var(--muted); }
+
+.msg { padding: 12px 14px; border-radius: 12px; background: var(--muted-bg); color: var(--soft); }
+.msg.bad { background: var(--bad-bg); color: var(--bad); }
+.hidden { display: none !important; }
+.center { text-align: center; }
+.soft { color: var(--soft); }
+
+.list { list-style: none; margin: 0; padding: 0; }
+.list li {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 10px 0; border-bottom: 1px solid var(--line);
+}
+.list li:last-child { border-bottom: 0; }
+.list .who { min-width: 0; }
+.list .who b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.list .who span { font-size: .82rem; color: var(--soft); }
+
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.stat { border-radius: 12px; padding: 10px; text-align: center; }
+.stat b { display: block; font-size: 1.5rem; line-height: 1.2; }
+.stat.ok { background: var(--ok-bg); color: var(--ok); }
+.stat.warn { background: var(--warn-bg); color: var(--warn); }
+.stat.bad { background: var(--bad-bg); color: var(--bad); }
+
+.spinner {
+  width: 28px; height: 28px; border-radius: 50%; margin: 20px auto;
+  border: 3px solid var(--line); border-top-color: var(--brand); animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* header logo */
+.brand { display: flex; align-items: center; gap: 10px; }
+.brand .logo { width: 46px; height: 46px; border-radius: 12px; background: #fff; object-fit: contain; flex: 0 0 46px; border: 1px solid var(--line); }
+.brand > span, .brand > div { min-width: 0; }
+header.top { border-bottom: 3px solid var(--gold); padding-bottom: 10px; }

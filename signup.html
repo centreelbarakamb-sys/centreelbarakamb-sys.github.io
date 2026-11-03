@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>تسجيل طالب · Inscription</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .trap { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); opacity: 0; pointer-events: none; }
+  .help { font-size: .8rem; color: var(--soft); margin-top: 4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><span id="center">سنتر البركة</span><small>تسجيل طالب · Inscription</small></div>
+  </header>
+
+  <div id="loading" class="spinner"></div>
+  <div id="closed" class="card hidden"><p class="msg">التسجيل مقفول دلوقتي — كلّم السنتر<br><span class="fr">Inscriptions fermées</span></p></div>
+
+  <form id="form" class="hidden" novalidate>
+    <div class="card">
+      <label class="lbl" for="name" style="margin-top:0">اسم الطالب ثلاثي <span class="fr">Nom de l'élève</span></label>
+      <input id="name" autocomplete="off" maxlength="60" placeholder="مثال: يوسف أحمد محمود">
+      <label class="lbl" for="parent">اسم ولي الأمر <span class="fr">Nom du parent</span></label>
+      <input id="parent" autocomplete="name" maxlength="60" placeholder="اختياري">
+      <label class="lbl" for="phone">موبايل ولي الأمر <span class="fr">Téléphone</span></label>
+      <input id="phone" type="tel" inputmode="tel" autocomplete="tel" maxlength="16" placeholder="01xxxxxxxxx" style="direction:ltr;text-align:right">
+      <div class="trap" aria-hidden="true"><label for="website">Website</label><input id="website" tabindex="-1" autocomplete="off"></div>
+    </div>
+    <p class="msg bad hidden" id="err"></p>
+    <div style="height:10px"></div>
+    <button type="submit" id="submit">تسجيل · S'inscrire</button>
+    <p class="center soft" style="font-size:.85rem">بعد التسجيل هيظهرلك كارت الطالب وصفحة متابعة الحضور على طول.</p>
+  </form>
+</div>
+
+<script src="config.js"></script>
+<script src="common.js"></script>
+<script>
+(function () {
+  const B = window.BARAKA;
+  const $ = function (id) { return document.getElementById(id); };
+  const ERR = {
+    name: 'اكتب اسم الطالب ثلاثي (اسمين على الأقل)',
+    phone: 'رقم الموبايل لازم يكون ١١ رقم ويبدأ بـ 01',
+    exists: 'الطالب ده متسجل قبل كده بنفس الرقم — لو ضاع الرابط كلّم الاستقبال',
+    limit: 'محاولات كتير — جرّب تاني بعد شوية',
+    closed: 'التسجيل مقفول دلوقتي',
+    bad: 'حصل خطأ — جرّب تاني'
+  };
+  function err(t) { $('err').textContent = t; $('err').classList.remove('hidden'); }
+
+  B.api('info').then(function (r) {
+    $('loading').classList.add('hidden');
+    $('center').textContent = r.center || 'سنتر البركة';
+    if (r.open) $('form').classList.remove('hidden'); else $('closed').classList.remove('hidden');
+  }).catch(function (e) {
+    $('loading').classList.add('hidden');
+    $('closed').querySelector('p').textContent = B.errorText(e);
+    $('closed').classList.remove('hidden');
+  });
+
+  $('form').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    $('err').classList.add('hidden');
+    const name = $('name').value.trim().replace(/\s+/g, ' ');
+    if (name.split(' ').length < 2) return err(ERR.name);
+    $('submit').disabled = true; $('submit').textContent = 'جاري التسجيل…';
+    try {
+      const r = await B.api('signup', { name: name, parent: $('parent').value.trim(), phone: $('phone').value.trim(), website: $('website').value });
+      if (!r.ok) return err(ERR[r.error] || ERR.bad);
+      B.kids.add(r.code, r.name);
+      location.href = 'parent.html?c=' + encodeURIComponent(r.code) + '&new=1';
+    } catch (ex) {
+      err(B.errorText(ex));
+    } finally {
+      $('submit').disabled = false; $('submit').textContent = 'تسجيل · S\'inscrire';
+    }
+  });
+})();
+</script>
+</body>
+</html>

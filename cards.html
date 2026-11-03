@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>طباعة الكروت · Cartes</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .sheet { display: grid; grid-template-columns: 1fr; gap: 0; }
+  .pair {
+    display: grid; grid-template-columns: 1fr 1fr; border: 1px dashed #999; background: #fff; color: #111;
+    break-inside: avoid; page-break-inside: avoid; height: 55mm;
+  }
+  .half { display: flex; align-items: center; gap: 10px; padding: 8px 10px; overflow: hidden; }
+  .half + .half { border-right: 1px dashed #999; }
+  .qr svg { width: 38mm; height: 38mm; display: block; }
+  .txt { min-width: 0; font-size: 11px; line-height: 1.35; }
+  .txt .c { font-weight: 800; color: #1d3d7a; font-size: 12px; display: flex; align-items: center; gap: 5px; }
+  .txt .c img { width: 26px; height: 26px; object-fit: contain; }
+  .txt .n { font-weight: 800; font-size: 14px; margin: 3px 0; word-break: break-word; }
+  .txt .id { direction: ltr; font-family: monospace; font-size: 12px; font-weight: 700; }
+  .txt .f { direction: ltr; color: #555; font-size: 10px; }
+  .tag { display: inline-block; background: #1d3d7a; color: #fff; border-radius: 6px; padding: 1px 6px; font-size: 10px; font-weight: 700; }
+  .tag.p { background: #e0942c; }
+  .poster { background: #fff; color: #111; border: 3px solid #1d3d7a; border-bottom: 10px solid #e0942c; border-radius: 18px; padding: 28px 24px; text-align: center; max-width: 180mm; margin: 0 auto; }
+  .poster .plogo { width: 62%; max-width: 110mm; height: auto; display: block; margin: 0 auto 6px; }
+  .poster .pc { color: #1d3d7a; font-weight: 800; font-size: 26px; }
+  .poster .pt { font-weight: 800; font-size: 30px; line-height: 1.3; margin-top: 10px; }
+  .poster .pf { direction: ltr; color: #555; font-size: 18px; margin-top: 4px; }
+  .poster .pq { width: 75mm; max-width: 80%; margin: 22px auto; }
+  .poster .pq svg { width: 100%; height: auto; display: block; }
+  .poster ol { text-align: right; font-size: 18px; line-height: 1.7; max-width: 140mm; margin: 0 auto; padding-right: 28px; }
+  .poster .pu { direction: ltr; font-family: monospace; font-size: 13px; color: #555; margin-top: 18px; word-break: break-all; }
+  @media print {
+    @page { size: A4; margin: 8mm; }
+    body { background: #fff; }
+    .noprint { display: none !important; }
+    .wrap { max-width: none; padding: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="noprint">
+    <header class="top">
+      <div class="brand"><span id="center">سنتر البركة</span><small>طباعة الكروت · Impression des cartes</small></div>
+    </header>
+
+    <div class="card" id="pinBox">
+      <h2>رقم الاستقبال <span class="fr">Code accueil</span></h2>
+      <input id="pin" type="password" inputmode="numeric" placeholder="PIN">
+      <div style="height:10px"></div>
+      <button id="pinBtn">دخول · Entrer</button>
+      <p class="msg bad hidden" id="pinErr"></p>
+    </div>
+
+    <div class="card hidden" id="ctrl">
+      <label class="lbl" for="find" style="margin-top:0">بحث بالاسم أو الكود (فاضي = كل الطلاب)</label>
+      <input id="find" placeholder="اسم / BRK-00012">
+      <div style="height:12px"></div>
+      <div class="row">
+        <button id="build">عرض الكروت · Afficher</button>
+        <button class="ghost" id="print">🖨 طباعة · Imprimer</button>
+      </div>
+      <div style="height:8px"></div>
+      <button class="ghost" id="posterBtn">📌 ملصق التسجيل لأولياء الأمور · Affiche d'inscription</button>
+      <p class="soft" id="info" style="margin:10px 0 0"></p>
+      <p class="soft" style="font-size:.85rem;margin:6px 0 0">كل كارت نصّين: النص الأخضر للطالب (بيتمسح في الاستقبال)، والنص البرتقالي لولي الأمر (بيفتح صفحة الحضور). قصّهم من الخط المتقطع.</p>
+    </div>
+  </div>
+
+  <div class="sheet" id="sheet"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+<script src="config.js"></script>
+<script src="common.js"></script>
+<script>
+(function () {
+  const B = window.BARAKA;
+  const $ = function (id) { return document.getElementById(id); };
+  let pin = B.store.get('staff_pin');
+  let center = 'سنتر البركة';
+  const parentBase = new URL('parent.html', location.href).href;
+
+  function qrSvg(text) {
+    const q = qrcode(0, 'M');
+    q.addData(text);
+    q.make();
+    return q.createSvgTag({ cellSize: 4, margin: 2, scalable: true });
+  }
+
+  async function login(p) {
+    $('pinErr').classList.add('hidden');
+    try {
+      const r = await B.api('today', { pin: p });
+      if (!r.ok) { $('pinErr').textContent = 'الرقم غلط · Code incorrect'; $('pinErr').classList.remove('hidden'); return; }
+      pin = p; B.store.set('staff_pin', p);
+      center = r.center || center; $('center').textContent = center;
+      $('pinBox').classList.add('hidden'); $('ctrl').classList.remove('hidden');
+      const f = new URLSearchParams(location.search).get('find');
+      if (f) { $('find').value = f; build(); }
+    } catch (e) {
+      $('pinErr').textContent = B.errorText(e); $('pinErr').classList.remove('hidden');
+    }
+  }
+
+  async function build() {
+    $('info').textContent = 'جاري التحميل…';
+    $('sheet').innerHTML = '';
+    try {
+      const r = await B.api('cards', { pin: pin });
+      if (!r.ok) { $('info').textContent = 'خطأ: ' + r.error; return; }
+      const f = $('find').value.trim().toLowerCase();
+      const list = f ? r.list.filter(function (x) { return x.name.toLowerCase().indexOf(f) >= 0 || x.id.toLowerCase().indexOf(f) >= 0; }) : r.list;
+      $('info').textContent = list.length + ' كارت · cartes';
+      const parts = [];
+      list.forEach(function (x) {
+        parts.push(
+          '<div class="pair">' +
+            '<div class="half"><div class="qr">' + qrSvg(x.id) + '</div><div class="txt">' +
+              '<div class="c"><img src="logo.jpg" alt="">' + B.esc(r.center || center) + '</div><span class="tag">بطاقة الطالب · Carte élève</span>' +
+              '<div class="n">' + B.esc(x.name) + '</div><div class="id">' + B.esc(x.id) + '</div>' +
+              '<div>اعرضه في الاستقبال كل حصة</div><div class="f">À présenter à l\'accueil</div>' +
+            '</div></div>' +
+            '<div class="half"><div class="qr">' + qrSvg(parentBase + '?c=' + encodeURIComponent(x.parentCode)) + '</div><div class="txt">' +
+              '<div class="c"><img src="logo.jpg" alt="">' + B.esc(r.center || center) + '</div><span class="tag p">لولي الأمر · Parents</span>' +
+              '<div class="n">' + B.esc(x.name) + '</div>' +
+              '<div>امسح الكود بكاميرا الموبايل لمتابعة الحضور والغياب</div>' +
+              '<div class="f">Scannez pour voir la présence de votre enfant</div>' +
+            '</div></div>' +
+          '</div>'
+        );
+      });
+      $('sheet').innerHTML = parts.join('');
+    } catch (e) {
+      $('info').textContent = B.errorText(e);
+    }
+  }
+
+  $('pinBtn').onclick = function () { login($('pin').value.trim()); };
+  $('pin').onkeydown = function (e) { if (e.key === 'Enter') login($('pin').value.trim()); };
+  $('build').onclick = build;
+  $('posterBtn').onclick = function () {
+    const url = new URL('signup.html', location.href).href;
+    $('info').textContent = 'ملصق A4 — اطبعه وعلّقه في الاستقبال';
+    $('sheet').innerHTML =
+      '<div class="poster">' +
+        '<img class="plogo" src="logo-full.jpg" alt="Centre El Baraka">' +
+        '<div class="pt">سجّل ابنك وتابع حضوره من موبايلك</div>' +
+        '<div class="pf">Inscrivez votre enfant et suivez sa présence</div>' +
+        '<div class="pq">' + qrSvg(url) + '</div>' +
+        '<ol><li>امسح الكود بكاميرا الموبايل</li><li>اكتب اسم الطالب ورقم ولي الأمر</li><li>هيظهرلك كارت الطالب وصفحة الحضور — احفظها على موبايلك</li></ol>' +
+        '<div class="pu">' + B.esc(url) + '</div>' +
+      '</div>';
+  };
+  $('print').onclick = function () { window.print(); };
+  if (pin) login(pin);
+})();
+</script>
+</body>
+</html>
