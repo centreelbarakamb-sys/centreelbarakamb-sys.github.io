@@ -22,9 +22,9 @@
   .code.st { background: var(--brand-2); }
   .keep { background: var(--gold-2); border-radius: 14px; padding: 12px; display: grid; gap: 6px; align-content: start; min-width: 0; }
   .keep b { color: var(--gold); font-size: .9rem; }
-  .keep .kv { display: flex; justify-content: space-between; gap: 6px; background: var(--card); border-radius: 10px; padding: 6px 10px; font-size: .8rem; }
-  .keep .kv strong { direction: ltr; font-family: monospace; font-size: .95rem; }
-  .keep .kv strong:not(#keepId) { font-family: inherit; direction: rtl; font-size: .8rem; }
+  .keep .kv { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 6px; background: var(--card); border-radius: 10px; padding: 6px 10px; font-size: .8rem; min-width: 0; }
+  .keep .kv strong { direction: ltr; font-family: monospace; font-size: .85rem; min-width: 0; overflow-wrap: anywhere; }
+  .keep .kv strong:not(#keepId):not(.num) { font-family: inherit; direction: rtl; font-size: .8rem; }
   .keep p { margin: 0; font-size: .75rem; color: var(--soft); line-height: 1.45; }
   .code .tag { font-weight: 800; font-size: .8rem; }
   .code.st .tag { color: var(--brand); }
@@ -41,6 +41,11 @@
   .qrbig svg { width: min(80vw, 70vh); height: auto; }
   .qrbig b { font-size: 1.4rem; }
   .new { background: var(--ok-bg); color: var(--ok); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 14px; font-weight: 600; }
+  .reg { display: grid; gap: 8px; margin: 12px 0 10px; }
+  .reg div { display: flex; justify-content: space-between; align-items: center; gap: 10px; background: var(--card); color: var(--ink); border-radius: 12px; padding: 10px 14px; }
+  .reg span { font-weight: 600; color: var(--soft); font-size: .9rem; white-space: nowrap; }
+  .reg b { font-weight: 900; font-size: 1.35rem; text-align: left; min-width: 0; overflow-wrap: anywhere; }
+  .reg b.num { direction: ltr; font-variant-numeric: tabular-nums; letter-spacing: .04em; }
   .month { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; }
   .month b { font-size: 1.8rem; color: var(--brand); font-variant-numeric: tabular-nums; }
 </style>
@@ -90,7 +95,7 @@
         <div class="keep">
           <b>📝 احفظ البيانات دي</b>
           <div class="kv"><span>رقم الطالب</span><strong id="keepId"></strong></div>
-          <div class="kv"><span>رقم الموبايل</span><strong>اللي سجّلت بيه</strong></div>
+          <div class="kv"><span>رقم الموبايل</span><strong id="keepPhone">اللي سجّلت بيه</strong></div>
           <p>بيهم تقدر تتابع الحضور من أي موبايل: افتح الموقع ← «متابعة الحضور بكود الطالب» ← اكتب رقم الطالب ورقم موبايلك.</p>
         </div>
       </div>
@@ -123,6 +128,9 @@
   const qs = new URLSearchParams(location.search);
   let code = qs.get('c') || '';
   let current = null;
+  let reg = null;   // details of a sign-up made a moment ago in this tab
+  try { reg = JSON.parse(sessionStorage.getItem('baraka_new') || 'null'); } catch (e) {}
+  if (!reg || reg.code !== code) reg = null;
 
   function fail(t) {
     $('loading').classList.add('hidden'); $('app').classList.add('hidden');
@@ -161,6 +169,7 @@
 
       if ($('idText').textContent !== r.id) {
         $('idQr').innerHTML = B.qrSvg(r.id); $('idText').textContent = r.id; $('keepId').textContent = r.id;
+        if (reg && reg.phone) { const k = $('keepPhone'); k.textContent = reg.phone; k.className = 'num'; }
       }
 
       $('monthCount').textContent = r.thisMonth;
@@ -222,7 +231,7 @@
       const lx = 40, lw = W / 2 - 60;
       g.fillStyle = '#fdf1df'; g.beginPath(); g.roundRect(lx, y, lw, 560, 28); g.fill();
       g.textAlign = 'right'; g.fillStyle = '#b76f12'; g.font = font(800, 32); g.fillText('احفظ البيانات دي', lx + lw - 30, y + 56);
-      [['رقم الطالب', current.id], ['رقم الموبايل', 'اللي سجّلت بيه']].forEach(function (row, i) {
+      [['رقم الطالب', current.id], ['رقم الموبايل', (reg && reg.phone) || 'اللي سجّلت بيه']].forEach(function (row, i) {
         const ry = y + 86 + i * 84;
         g.fillStyle = '#ffffff'; g.beginPath(); g.roundRect(lx + 24, ry, lw - 48, 66, 16); g.fill();
         g.fillStyle = '#5b6680'; g.font = font(600, 24); g.textAlign = 'right'; g.fillText(row[0], lx + lw - 44, ry + 42);
@@ -250,7 +259,12 @@
   // right after sign-up: show the two codes first
   if (qs.get('new')) {
     $('newBox').classList.remove('hidden');
-    $('newBox').innerHTML = '✅ اتسجل بنجاح! احفظ رقم الطالب ورقم موبايلك — بيهم تتابع الحضور في أي وقت. ودوس "حفظ كود الطالب كصورة".<br><span class="fr">Inscription réussie — gardez le code élève et votre numéro.</span>';
+    $('newBox').innerHTML = '✅ اتسجل بنجاح! احفظ البيانات دي — بيها تتابع الحضور في أي وقت.' +
+      (reg ? '<div class="reg">' +
+        '<div><span>رقم الطالب</span><b class="num">' + B.esc(reg.id) + '</b></div>' +
+        '<div><span>اسم الطالب</span><b>' + B.esc(reg.name) + '</b></div>' +
+        '<div><span>رقم الموبايل</span><b class="num">' + B.esc(reg.phone) + '</b></div></div>' : '<br>') +
+      'دوس "حفظ كود الطالب كصورة" تحت عشان تحتفظ بيهم.<br><span class="fr">Inscription réussie — gardez ces informations.</span>';
     const app = $('app'); app.insertBefore($('codesCard'), app.firstChild);
   }
   // find a child with the student code + first name
