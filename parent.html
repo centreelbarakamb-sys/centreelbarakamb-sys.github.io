@@ -52,6 +52,18 @@
   <div id="loading" class="spinner"></div>
   <div id="error" class="card hidden"><p class="msg bad" id="errText"></p></div>
 
+  <form class="card hidden" id="lookupCard" novalidate>
+    <h2>تابع الحضور بكود الطالب <span class="fr">Avec le code élève</span></h2>
+    <label class="lbl" for="lkId">كود الطالب <span class="fr">Code élève</span></label>
+    <input id="lkId" inputmode="numeric" autocomplete="off" placeholder="مثال: 48213" style="direction:ltr;text-align:right">
+    <p class="soft" style="margin:4px 0 0;font-size:.8rem">الـ ٥ أرقام المكتوبين تحت كود الطالب الأزرق.</p>
+    <label class="lbl" for="lkName">اسم الطالب الأول <span class="fr">Prénom</span></label>
+    <input id="lkName" autocomplete="off" placeholder="مثال: يوسف">
+    <div style="height:12px"></div>
+    <button type="submit" id="lkGo">عرض الحضور · Voir la présence</button>
+    <p class="msg bad hidden" id="lkErr" style="margin-top:10px"></p>
+  </form>
+
   <div id="app" class="hidden">
     <div class="card">
       <div class="soft">الطالب · Élève</div>
@@ -90,6 +102,7 @@
       <ul class="list" id="history"></ul>
     </div>
 
+    <p class="center" style="font-size:.9rem;margin:0 0 6px"><a href="#" id="showLookup">🔎 تابع طالب تاني بكود الطالب واسمه</a></p>
     <p class="center soft" style="font-size:.8rem">الرابط ده خاص بيك — متشاركوش · Lien privé</p>
   </div>
 </div>
@@ -110,6 +123,7 @@
   function fail(t) {
     $('loading').classList.add('hidden'); $('app').classList.add('hidden');
     $('errText').innerHTML = t; $('error').classList.remove('hidden');
+    $('lookupCard').classList.remove('hidden');
   }
 
   function kidsBar() {
@@ -124,11 +138,11 @@
     if (!code) {
       const l = B.kids.list();
       if (l.length) code = l[l.length - 1].c;
-      else return fail('امسح الكود اللي على كارت الطالب، أو <a href="signup.html">سجّل ابنك من هنا</a><br><span class="fr">Scannez la carte ou inscrivez votre enfant</span>');
+      else return fail('امسح كود ولي الأمر، أو اكتب كود الطالب واسمه تحت، أو <a href="signup.html">سجّل ابنك من هنا</a><br><span class="fr">Scannez le code ou entrez le code élève</span>');
     }
     try {
       const r = await B.api('parent', { code: code });
-      if (!r.ok) { B.kids.remove(code); return fail('الرابط غير صحيح — كلّم السنتر<br><span class="fr">Lien invalide, contactez le centre</span>'); }
+      if (!r.ok) { B.kids.remove(code); return fail('الرابط غير صحيح — اكتب كود الطالب واسمه تحت، أو كلّم السنتر<br><span class="fr">Lien invalide</span>'); }
       current = r;
       B.kids.add(code, r.student);
       kidsBar();
@@ -232,6 +246,35 @@
     $('newBox').innerHTML = '✅ اتسجل بنجاح! ده كود الطالب وكود ولي الأمر — احفظهم بزرار "حفظ الكودين كصورة".<br><span class="fr">Inscription réussie — enregistrez les deux codes.</span>';
     const app = $('app'); app.insertBefore($('codesCard'), app.firstChild);
   }
+  // find a child with the student code + first name
+  $('showLookup').onclick = function (e) {
+    e.preventDefault();
+    const f = $('lookupCard'); f.classList.remove('hidden');
+    $('app').parentNode.insertBefore(f, $('app').nextSibling);
+    f.scrollIntoView({ behavior: 'smooth', block: 'center' }); $('lkId').focus();
+  };
+  const LKERR = {
+    input: 'اكتب كود الطالب واسمه الأول',
+    nomatch: 'الكود والاسم مش متطابقين — اكتب الاسم الأول زي ما اتسجل، أو كلّم الاستقبال',
+    limit: 'محاولات كتير — جرّب تاني بعد ساعة',
+    bad: 'حصل خطأ — جرّب تاني'
+  };
+  $('lookupCard').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    const err = $('lkErr'); err.classList.add('hidden');
+    $('lkGo').disabled = true; $('lkGo').textContent = 'جاري البحث…';
+    try {
+      const r = await B.api('lookup', { id: $('lkId').value.trim(), name: $('lkName').value.trim() });
+      if (!r.ok) { err.textContent = LKERR[r.error] || LKERR.bad; err.classList.remove('hidden'); return; }
+      B.kids.add(r.code, r.name);
+      location.href = location.pathname + '?c=' + encodeURIComponent(r.code);
+    } catch (ex) {
+      err.textContent = B.errorText(ex); err.classList.remove('hidden');
+    } finally {
+      $('lkGo').disabled = false; $('lkGo').textContent = 'عرض الحضور · Voir la présence';
+    }
+  });
+
   $('reload').onclick = load;
   load();
   setInterval(load, 120000);
