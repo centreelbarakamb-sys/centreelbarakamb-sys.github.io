@@ -20,7 +20,12 @@
   .codes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .code { border-radius: 14px; padding: 10px; text-align: center; display: grid; gap: 6px; justify-items: center; min-width: 0; }
   .code.st { background: var(--brand-2); }
-  .code.pa { background: var(--gold-2); }
+  .keep { background: var(--gold-2); border-radius: 14px; padding: 12px; display: grid; gap: 6px; align-content: start; min-width: 0; }
+  .keep b { color: var(--gold); font-size: .9rem; }
+  .keep .kv { display: flex; justify-content: space-between; gap: 6px; background: var(--card); border-radius: 10px; padding: 6px 10px; font-size: .8rem; }
+  .keep .kv strong { direction: ltr; font-family: monospace; font-size: .95rem; }
+  .keep .kv strong:not(#keepId) { font-family: inherit; direction: rtl; font-size: .8rem; }
+  .keep p { margin: 0; font-size: .75rem; color: var(--soft); line-height: 1.45; }
   .code .tag { font-weight: 800; font-size: .8rem; }
   .code.st .tag { color: var(--brand); }
   .code.pa .tag { color: var(--gold); }
@@ -74,7 +79,7 @@
     </div>
 
     <div class="card" id="codesCard">
-      <h2>الكودين بتوع الطالب <span class="fr">Les deux codes</span></h2>
+      <h2>كود الطالب <span class="fr">Code élève</span></h2>
       <div class="codes">
         <div class="code st">
           <span class="tag">🎒 كود الطالب · Élève</span>
@@ -82,18 +87,17 @@
           <div class="id" id="idText"></div>
           <p>الطالب يوريه في الاستقبال لما يوصل</p>
         </div>
-        <div class="code pa">
-          <span class="tag">👪 كود ولي الأمر · Parent</span>
-          <div class="qr" id="paQr" role="button" tabindex="0" aria-label="تكبير كود ولي الأمر"></div>
-          <div class="id">صفحة الحضور</div>
-          <p>امسحه في أي وقت عشان ترجع للصفحة دي</p>
+        <div class="keep">
+          <b>📝 احفظ البيانات دي</b>
+          <div class="kv"><span>رقم الطالب</span><strong id="keepId"></strong></div>
+          <div class="kv"><span>رقم الموبايل</span><strong>اللي سجّلت بيه</strong></div>
+          <p>بيهم تقدر تتابع الحضور من أي موبايل: افتح الموقع ← «متابعة الحضور بكود الطالب» ← اكتب رقم الطالب ورقم موبايلك.</p>
         </div>
       </div>
       <div class="row" style="margin-top:12px">
-        <button id="saveCard">💾 حفظ الكودين كصورة</button>
-        <button class="ghost" id="copyLink">🔗 نسخ رابط ولي الأمر</button>
+        <button id="saveCard">💾 حفظ كود الطالب كصورة</button>
       </div>
-      <p class="soft" style="margin:8px 0 0;font-size:.8rem">احفظ الصورة على موبايلك أو اطبعها. اضغط على أي كود لتكبيره.</p>
+      <p class="soft" style="margin:8px 0 0;font-size:.8rem">احفظ الصورة على موبايلك أو اطبعها. اضغط على الكود لتكبيره.</p>
     </div>
 
     <div class="card">
@@ -156,8 +160,7 @@
       $('when').textContent = B.dayLabel(r.date) + ' · آخر تحديث ' + r.time;
 
       if ($('idText').textContent !== r.id) {
-        $('idQr').innerHTML = B.qrSvg(r.id); $('idText').textContent = r.id;
-        $('paQr').innerHTML = B.qrSvg(parentLink());
+        $('idQr').innerHTML = B.qrSvg(r.id); $('idText').textContent = r.id; $('keepId').textContent = r.id;
       }
 
       $('monthCount').textContent = r.thisMonth;
@@ -174,17 +177,14 @@
   // the private link this parent uses to come back (also inside the parent QR)
   function parentLink() { return location.origin + location.pathname + '?c=' + encodeURIComponent(code); }
 
-  function openBig(which) {
+  function openBig() {
     if (!current) return;
-    const isSt = which === 'st';
-    $('qrBig').innerHTML = B.qrSvg(isSt ? current.id : parentLink()) + '<b>' + B.esc(current.student) + '</b>' +
-      '<span>' + (isSt ? '🎒 كود الطالب · ' + B.esc(current.id) : '👪 كود ولي الأمر · صفحة الحضور') + '</span><button class="small">إغلاق · Fermer</button>';
+    $('qrBig').innerHTML = B.qrSvg(current.id) + '<b>' + B.esc(current.student) + '</b>' +
+      '<span>🎒 كود الطالب · ' + B.esc(current.id) + '</span><button class="small">إغلاق · Fermer</button>';
     $('qrBig').classList.remove('hidden');
   }
-  [['idQr', 'st'], ['paQr', 'pa']].forEach(function (x) {
-    $(x[0]).onclick = function () { openBig(x[1]); };
-    $(x[0]).onkeydown = function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openBig(x[1]); } };
-  });
+  $('idQr').onclick = openBig;
+  $('idQr').onkeydown = function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openBig(); } };
   $('qrBig').onclick = function () { $('qrBig').classList.add('hidden'); };
 
   // one image with both codes, to keep on the phone or print
@@ -197,7 +197,7 @@
     if (!current) return;
     const btn = $('saveCard'); btn.disabled = true;
     try {
-      const W = 1200, H = 760, c = document.createElement('canvas');
+      const W = 1200, H = 800, c = document.createElement('canvas');
       c.width = W; c.height = H;
       const g = c.getContext('2d');
       const font = function (w, s) { return w + ' ' + s + 'px Cairo, Tahoma, Arial, sans-serif'; };
@@ -208,20 +208,33 @@
       g.direction = 'rtl'; g.textAlign = 'right'; g.fillStyle = '#1d3d7a';
       g.font = font(800, 44); g.fillText(current.center || 'سنتر البركة', W - 170, 88);
       g.fillStyle = '#152033'; g.font = font(700, 34); g.fillText(current.student, W - 170, 134);
-      const halves = [
-        { x: W / 2 + 20, img: await qrImg(current.id), color: '#1d3d7a', bg: '#e7edf8', t1: 'كود الطالب · Élève', t2: current.id, t3: 'يتعرض في الاستقبال لما يوصل' },
-        { x: 40, img: await qrImg(parentLink()), color: '#e0942c', bg: '#fdf1df', t1: 'كود ولي الأمر · Parent', t2: 'صفحة الحضور', t3: 'امسحه عشان تتابع الحضور' }
-      ];
-      halves.forEach(function (h) {
-        const w = W / 2 - 60, y = 180;
-        g.fillStyle = h.bg; g.beginPath(); g.roundRect(h.x, y, w, 540, 28); g.fill();
-        g.textAlign = 'center'; g.fillStyle = h.color; g.font = font(800, 32); g.fillText(h.t1, h.x + w / 2, y + 56);
-        g.fillStyle = '#ffffff'; g.fillRect(h.x + w / 2 - 170, y + 80, 340, 340);
-        g.strokeStyle = h.color; g.lineWidth = 6; g.strokeRect(h.x + w / 2 - 170, y + 80, 340, 340);
-        if (h.img) g.drawImage(h.img, h.x + w / 2 - 160, y + 90, 320, 320);
-        g.fillStyle = '#152033'; g.font = font(800, 30); g.fillText(h.t2, h.x + w / 2, y + 470);
-        g.fillStyle = '#5b6680'; g.font = font(600, 24); g.fillText(h.t3, h.x + w / 2, y + 510);
+      // right: the student QR
+      const qx = W / 2 + 20, qw = W / 2 - 60, y = 180;
+      g.fillStyle = '#e7edf8'; g.beginPath(); g.roundRect(qx, y, qw, 560, 28); g.fill();
+      g.textAlign = 'center'; g.fillStyle = '#1d3d7a'; g.font = font(800, 32); g.fillText('كود الطالب · Élève', qx + qw / 2, y + 56);
+      g.fillStyle = '#ffffff'; g.fillRect(qx + qw / 2 - 170, y + 80, 340, 340);
+      g.strokeStyle = '#1d3d7a'; g.lineWidth = 6; g.strokeRect(qx + qw / 2 - 170, y + 80, 340, 340);
+      const img = await qrImg(current.id);
+      if (img) g.drawImage(img, qx + qw / 2 - 160, y + 90, 320, 320);
+      g.fillStyle = '#152033'; g.font = font(800, 44); g.fillText(current.id, qx + qw / 2, y + 480);
+      g.fillStyle = '#5b6680'; g.font = font(600, 24); g.fillText('يتعرض في الاستقبال لما يوصل', qx + qw / 2, y + 524);
+      // left: what to keep and how to check
+      const lx = 40, lw = W / 2 - 60;
+      g.fillStyle = '#fdf1df'; g.beginPath(); g.roundRect(lx, y, lw, 560, 28); g.fill();
+      g.textAlign = 'right'; g.fillStyle = '#b76f12'; g.font = font(800, 32); g.fillText('احفظ البيانات دي', lx + lw - 30, y + 56);
+      [['رقم الطالب', current.id], ['رقم الموبايل', 'اللي سجّلت بيه']].forEach(function (row, i) {
+        const ry = y + 86 + i * 84;
+        g.fillStyle = '#ffffff'; g.beginPath(); g.roundRect(lx + 24, ry, lw - 48, 66, 16); g.fill();
+        g.fillStyle = '#5b6680'; g.font = font(600, 24); g.textAlign = 'right'; g.fillText(row[0], lx + lw - 44, ry + 42);
+        g.fillStyle = '#152033'; g.font = font(800, 30); g.textAlign = 'left'; g.fillText(row[1], lx + 44, ry + 44);
       });
+      g.textAlign = 'right'; g.fillStyle = '#152033'; g.font = font(800, 26); g.fillText('تتابع الحضور إزاي؟', lx + lw - 30, y + 300);
+      g.fillStyle = '#26314a'; g.font = font(600, 23);
+      ['١- افتح موقع سنتر البركة', '٢- دوس «متابعة الحضور بكود الطالب»', '٣- اكتب رقم الطالب ورقم موبايلك'].forEach(function (t, i) {
+        g.fillText(t, lx + lw - 30, y + 344 + i * 40);
+      });
+      g.textAlign = 'center'; g.fillStyle = '#1d3d7a'; g.font = font(800, 22); g.direction = 'ltr';
+      g.fillText(location.host, lx + lw / 2, y + 520); g.direction = 'rtl';
       const a = document.createElement('a');
       a.download = 'El-Baraka-' + current.id + '.png';
       a.href = c.toDataURL('image/png');
@@ -234,16 +247,10 @@
     }
   };
 
-  $('copyLink').onclick = function () {
-    const done = function () { $('copyLink').textContent = '✅ اتنسخ الرابط'; };
-    if (navigator.clipboard) navigator.clipboard.writeText(parentLink()).then(done, function () { prompt('انسخ الرابط:', parentLink()); });
-    else prompt('انسخ الرابط:', parentLink());
-  };
-
   // right after sign-up: show the two codes first
   if (qs.get('new')) {
     $('newBox').classList.remove('hidden');
-    $('newBox').innerHTML = '✅ اتسجل بنجاح! ده كود الطالب وكود ولي الأمر — احفظهم بزرار "حفظ الكودين كصورة".<br><span class="fr">Inscription réussie — enregistrez les deux codes.</span>';
+    $('newBox').innerHTML = '✅ اتسجل بنجاح! احفظ رقم الطالب ورقم موبايلك — بيهم تتابع الحضور في أي وقت. ودوس "حفظ كود الطالب كصورة".<br><span class="fr">Inscription réussie — gardez le code élève et votre numéro.</span>';
     const app = $('app'); app.insertBefore($('codesCard'), app.firstChild);
   }
   // find a child with the student code + first name
