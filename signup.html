@@ -72,6 +72,9 @@
       const r = await B.api('signup', { name: name, parent: $('parent').value.trim(), phone: $('phone').value.trim(), website: $('website').value });
       if (!r.ok) return err(ERR[r.error] || ERR.bad);
       B.kids.add(r.code, r.name);
+      // show ID, name and phone once on the next page (kept in this tab only, never in the link)
+      const ph = $('phone').value.replace(/[٠-٩]/g, function (c) { return String(c.charCodeAt(0) - 0x0660); }).replace(/\D/g, '').replace(/^0020/, '').replace(/^20(?=1\d{9}$)/, '').replace(/^(?=1\d{9}$)/, '0');
+      try { sessionStorage.setItem('baraka_new', JSON.stringify({ code: r.code, id: r.id, name: r.name, phone: ph })); } catch (x) {}
       location.href = 'parent.html?c=' + encodeURIComponent(r.code) + '&new=1';
     } catch (ex) {
       err(B.errorText(ex));
