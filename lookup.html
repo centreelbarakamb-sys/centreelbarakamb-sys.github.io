@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>متابعة الحضور بكود الطالب · Présence</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .help { font-size: .8rem; color: var(--soft); margin-top: 4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><span id="center">سنتر البركة</span><small>متابعة الحضور · Suivi de présence</small></div>
+  </header>
+
+  <form class="card" id="form" novalidate>
+    <h2>تابع حضور ابنك بكود الطالب <span class="fr">Avec le code élève</span></h2>
+    <label class="lbl" for="sid">كود الطالب <span class="fr">Code élève</span></label>
+    <input id="sid" inputmode="numeric" autocomplete="off" placeholder="مثال: 48213" style="direction:ltr;text-align:right">
+    <div class="help">الـ ٥ أرقام المكتوبين تحت كود الطالب الأزرق.</div>
+    <label class="lbl" for="phone">موبايل ولي الأمر <span class="fr">Téléphone</span></label>
+    <input id="phone" type="tel" inputmode="tel" autocomplete="tel" maxlength="16" placeholder="01xxxxxxxxx" style="direction:ltr;text-align:right">
+    <div class="help">نفس الرقم اللي اتسجل بيه الطالب.</div>
+    <div style="height:14px"></div>
+    <button type="submit" id="go">عرض الحضور · Voir la présence</button>
+    <div style="height:10px"></div>
+    <p class="msg bad hidden" id="err"></p>
+  </form>
+
+  <p class="center soft" style="font-size:.85rem">مسجلتش ابنك لسه؟ <a href="signup.html">سجّل من هنا</a></p>
+</div>
+
+<script src="config.js"></script>
+<script src="common.js"></script>
+<script>
+(function () {
+  const B = window.BARAKA;
+  const $ = function (id) { return document.getElementById(id); };
+  const ERR = {
+    input: 'اكتب كود الطالب ورقم موبايل صحيح (١١ رقم يبدأ بـ 01)',
+    nomatch: 'الكود والموبايل مش متطابقين — اتأكد من الرقم اللي اتسجل بيه، أو كلّم الاستقبال',
+    limit: 'محاولات كتير — جرّب تاني بعد ساعة',
+    bad: 'حصل خطأ — جرّب تاني'
+  };
+  function err(t) { $('err').textContent = t; $('err').classList.remove('hidden'); }
+
+  $('form').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    $('err').classList.add('hidden');
+    $('go').disabled = true; $('go').textContent = 'جاري البحث…';
+    try {
+      const r = await B.api('lookup', { id: $('sid').value.trim(), phone: $('phone').value.trim() });
+      if (!r.ok) return err(ERR[r.error] || ERR.bad);
+      B.kids.add(r.code, r.name);
+      location.href = 'parent.html?c=' + encodeURIComponent(r.code);
+    } catch (ex) {
+      err(B.errorText(ex));
+    } finally {
+      $('go').disabled = false; $('go').textContent = 'عرض الحضور · Voir la présence';
+    }
+  });
+})();
+</script>
+</body>
+</html>
