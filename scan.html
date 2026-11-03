@@ -50,7 +50,7 @@
     <div class="card">
       <label class="lbl" for="manual" style="margin-top:0">إدخال الكود يدويًا <span class="fr">Saisie manuelle / lecteur USB</span></label>
       <form id="manualForm" class="row">
-        <input id="manual" autocomplete="off" placeholder="BRK-00001" style="direction:ltr">
+        <input id="manual" autocomplete="off" placeholder="48213" style="direction:ltr">
         <button type="submit" style="flex:0 0 auto;width:auto">تسجيل</button>
       </form>
     </div>
@@ -142,20 +142,41 @@
     } finally { busy = false; }
   }
 
+  let starting = false;
+  function isScanning() {
+    try { return !!scanner && scanner.getState() === Html5QrcodeScannerState.SCANNING; } catch (e) { return false; }
+  }
+  function camError(e) {
+    const n = String((e && (e.name || e)) || '');
+    if (/NotAllowed|Permission/i.test(n)) return 'اسمح للموقع باستخدام الكاميرا من إعدادات المتصفح';
+    if (/NotReadable|TrackStart|in use/i.test(n)) return 'الكاميرا مفتوحة في برنامج تاني — اقفله وجرّب تاني';
+    if (/NotFound|Overconstrained|DevicesNotFound/i.test(n)) return 'مفيش كاميرا متاحة — جرّب زرار تبديل';
+    if (/secure|https|NotSupported/i.test(n)) return 'افتح الصفحة في Chrome أو Safari (مش من جوه واتساب أو فيسبوك)';
+    return 'جرّب تقفل الصفحة وتفتحها تاني، أو اكتب الكود يدوي';
+  }
+
   async function startCam() {
+    if (starting || isScanning()) { camOn = true; $('camBtn').textContent = '⏸ إيقاف الكاميرا'; return; }
+    starting = true;
     try {
-      if (!scanner) scanner = new Html5Qrcode('reader', { formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE] });
+      if (!scanner) scanner = new Html5Qrcode('reader', { formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE], verbose: false });
       await scanner.start({ facingMode: facing },
-        { fps: 10, qrbox: function (w, h) { const s = Math.floor(Math.min(w, h) * 0.7); return { width: s, height: s }; } },
+        { fps: 10, qrbox: function (w, h) { const m = Math.min(w, h); const s = Math.max(Math.min(m, 160), Math.floor(m * 0.7)); return { width: s, height: s }; } },
         function (text) { record(text); }, function () {});
       camOn = true; $('camBtn').textContent = '⏸ إيقاف الكاميرا';
     } catch (e) {
-      camOn = false; $('camBtn').textContent = '▶️ تشغيل الكاميرا';
-      show('bad', '📷 الكاميرا مش شغالة', 'اسمح للموقع باستخدام الكاميرا، أو اكتب الكود يدوي');
+      if (isScanning()) {            // camera is actually running — the error was harmless
+        camOn = true; $('camBtn').textContent = '⏸ إيقاف الكاميرا';
+      } else {
+        camOn = false; $('camBtn').textContent = '▶️ تشغيل الكاميرا';
+        show('bad', '📷 الكاميرا مش شغالة', camError(e));
+      }
+    } finally {
+      starting = false;
     }
   }
   async function stopCam() {
-    try { if (scanner && camOn) await scanner.stop(); } catch (e) {}
+    try { if (isScanning()) await scanner.stop(); } catch (e) {}
     camOn = false; $('camBtn').textContent = '▶️ تشغيل الكاميرا';
   }
 
